@@ -11,6 +11,7 @@ import numpy as np
 import jax
 from jax import random, numpy as jnp
 from flax import linen as nn
+import equinox as eqx
 import optax
 import tensorflow as tf
 import tensorflow_datasets as tfds
@@ -130,9 +131,6 @@ class ProgressBoard(d2l.HyperParameters):
         self.save_hyperparameters()
 
     def draw(self, x, y, label, every_n=1):
-        raise NotImplemented
-
-    def draw(self, x, y, label, every_n=1):
         """Defined in :numref:`sec_utils`"""
         Point = collections.namedtuple('Point', ['x', 'y'])
         if not hasattr(self, 'raw_points'):
@@ -172,10 +170,9 @@ class ProgressBoard(d2l.HyperParameters):
         display.display(self.fig)
         display.clear_output(wait=True)
 
-class Module(nn.Module, d2l.HyperParameters):
+class Module(d2l.HyperParameters):
     """Defined in :numref:`sec_oo-design`"""
     def __init__(self, plot_train_per_epoch=2, plot_valid_per_epoch=1):
-        super().__init__()
         self.save_hyperparameters()
         self.board = ProgressBoard()
         self.training = None
@@ -209,9 +206,9 @@ class Module(nn.Module, d2l.HyperParameters):
             'train_' if train else 'val_') + key, every_n=int(n))
 
     def training_step(self, batch):
-        l, g = jax.value_and_grad(self.loss)(self(*batch[:-1]), batch[-1])
-        self.plot('loss', l, train=True)
-        return l, g
+        loss, grads = jax.vmap(jax.value_and_grad(self.loss))(self(*batch[:-1]), batch[-1])
+        self.plot('loss', loss, train=True)
+        return loss, grads
 
     def validation_step(self, batch):
         l = self.loss(self(*batch[:-1]), batch[-1])
@@ -246,68 +243,65 @@ class DataModule(d2l.HyperParameters):
             buffer_size=shuffle_buffer).batch(self.batch_size))
     
 
-# class Trainer(d2l.HyperParameters):
-#     """Defined in :numref:`sec_oo-design`"""
-#     def __init__(self, max_epochs, num_gpus=0, gradient_clip_val=0):
-#         self.save_hyperparameters()
-#         assert num_gpus == 0, 'No GPU support yet'
+class Trainer(d2l.HyperParameters):
+    """Defined in :numref:`sec_oo-design`"""
+    def __init__(self, max_epochs, num_gpus=0, gradient_clip_val=0):
+        self.save_hyperparameters()
+        assert num_gpus == 0, 'No GPU support yet'
 
-#     def prepare_data(self, data):
-#         self.train_dataloader = data.train_dataloader()
-#         self.val_dataloader = data.val_dataloader()
-#         self.num_train_batches = len(self.train_dataloader)
-#         self.num_val_batches = (len(self.val_dataloader)
-#                                 if self.val_dataloader is not None else 0)
+    def prepare_data(self, data):
+        self.train_dataloader = data.train_dataloader()
+        self.val_dataloader = data.val_dataloader()
+        self.num_train_batches = len(self.train_dataloader)
+        self.num_val_batches = (len(self.val_dataloader)
+                                if self.val_dataloader is not None else 0)
 
-#     def prepare_model(self, model):
-#         model.trainer = self
-#         model.board.xlim = [0, self.max_epochs]
-#         self.model = model
+    def prepare_model(self, model):
+        model.trainer = self
+        model.board.xlim = [0, self.max_epochs]
+        self.model = model
 
-#     def fit(self, model, data):
-#         self.prepare_data(data)
-#         self.prepare_model(model)
-#         self.optim = model.configure_optimizers()
-#         self.epoch = 0
-#         self.train_batch_idx = 0
-#         self.val_batch_idx = 0
-#         for self.epoch in range(self.max_epochs):
-#             self.fit_epoch()
+    def fit(self, model, data):
+        self.prepare_data(data)
+        self.prepare_model(model)
+        self.optim = model.configure_optimizers()
+        self.epoch = 0
+        self.train_batch_idx = 0
+        self.val_batch_idx = 0
+        for self.epoch in range(self.max_epochs):
+            self.fit_epoch()
 
-#     def fit_epoch(self):
-#         raise NotImplementedError
+    def prepare_batch(self, batch):
+        """Defined in :numref:`sec_linear_scratch`"""
+        return batch
 
-#     def prepare_batch(self, batch):
-#         """Defined in :numref:`sec_linear_scratch`"""
-#         return batch
+    # def fit_epoch(self):
+    #     self.model.training = True
+    #     for batch in self.train_dataloader:
+    #         _, grads = self.model.training_step(self.prepare_batch(batch))
+    #         if self.gradient_clip_val > 0:
+    #             grads = self.clip_gradients(self.gradient_clip_val, grads)
+    #         self.optim.apply_gradients(grads)
+    #         self.train_batch_idx += 1
+    #     if self.val_dataloader is None:
+    #         return
+    #     self.model.training = False
+    #     for batch in self.val_dataloader:
+    #         self.model.validation_step(self.prepare_batch(batch))
+    #         self.val_batch_idx += 1
 
-#     def fit_epoch(self):
-#         self.model.training = True
-#         for batch in self.train_dataloader:
-#             _, grads = self.model.training_step(self.prepare_batch(batch))
-#             if self.gradient_clip_val > 0:
-#                 grads = self.clip_gradients(self.gradient_clip_val, grads)
-#             self.optim.apply_gradients(grads)
-#             self.train_batch_idx += 1
-#         if self.val_dataloader is None:
-#             return
-#         self.model.training = False
-#         for batch in self.val_dataloader:
-#             self.model.validation_step(self.prepare_batch(batch))
-#             self.val_batch_idx += 1
-
-#     # todo
-#     def clip_gradients(self, grad_clip_val, grads):
-#         """Defined in :numref:`sec_rnn-scratch`"""
-#         grad_clip_val = tf.constant(grad_clip_val, dtype=tf.float32)
-#         new_grads = [tf.convert_to_tensor(grad) if isinstance(
-#             grad, tf.IndexedSlices) else grad for grad in grads]
-#         norm = tf.math.sqrt(sum((tf.reduce_sum(grad ** 2)) for grad in new_grads))
-#         if tf.greater(norm, grad_clip_val):
-#             for i, grad in enumerate(new_grads):
-#                 new_grads[i] = grad * grad_clip_val / norm
-#             return new_grads
-        return grads
+    # todo
+    # def clip_gradients(self, grad_clip_val, grads):
+    #     """Defined in :numref:`sec_rnn-scratch`"""
+    #     grad_clip_val = tf.constant(grad_clip_val, dtype=tf.float32)
+    #     new_grads = [tf.convert_to_tensor(grad) if isinstance(
+    #         grad, tf.IndexedSlices) else grad for grad in grads]
+    #     norm = tf.math.sqrt(sum((tf.reduce_sum(grad ** 2)) for grad in new_grads))
+    #     if tf.greater(norm, grad_clip_val):
+    #         for i, grad in enumerate(new_grads):
+    #             new_grads[i] = grad * grad_clip_val / norm
+    #         return new_grads
+    #     return grads
 
 # 3.3
 
