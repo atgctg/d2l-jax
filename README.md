@@ -1,1 +1,22 @@
 # d2l-jax
+
+- [x] 1. Introduction
+- [x] 2. Preliminaries
+- [ ] 3. Linear Neural Networks for Regression
+- [ ] 4. Linear Neural Networks for Classification
+- [ ] 5. Multilayer Perceptrons
+- [ ] 6. Builders’ Guide
+- [ ] 7. Convolutional Neural Networks
+- [ ] 8. Modern Convolutional Neural Networks
+- [ ] 9. Recurrent Neural Networks
+- [ ] 10. Modern Recurrent Neural Networks
+- [ ] 11. Attention Mechanisms and Transformers
+- [ ] 12. Optimization Algorithms
+- [ ] 13. Computational Performance
+- [ ] 14. Computer Vision
+- [ ] 15. Natural Language Processing: Pretraining
+- [ ] 16. Natural Language Processing: Applications
+- [ ] 17. Recommender Systems
+- [ ] 18. Generative Adversarial Networks
+- [ ] 19. Appendix: Mathematics for Deep Learning
+- [ ] 20. Appendix: Tools for Deep Learning
