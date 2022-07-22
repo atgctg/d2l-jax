@@ -1,22 +1,25 @@
 import sys
 import collections
-import time
 import inspect
+import time
 from IPython import display
 
 from matplotlib_inline import backend_inline
 import matplotlib.pyplot as plt
 
 import numpy as np
+
 import jax
-from jax import random, numpy as jnp
+from jax import numpy as jnp, random, grad, vmap, jit
 from flax import linen as nn
-import equinox as eqx
+from flax.training.train_state import TrainState
 import optax
+
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
 d2l = sys.modules[__name__]
+
 
 def use_svg_display():
     """Use the svg format to display a plot in Jupyter.
@@ -97,8 +100,8 @@ def plot(
     set_axes(axes, xlabel, ylabel, xlim, ylim, xscale, yscale, legend)
 
 
-
 # 3.2
+
 
 def add_to_class(Class):  # @save
     def wrapper(obj):
@@ -120,20 +123,33 @@ class HyperParameters:  # @save
         for k, v in self.hparams.items():
             setattr(self, k, v)
 
-class ProgressBoard(d2l.HyperParameters):
+
+class ProgressBoard(HyperParameters):
     """Plot data points in animation.
 
     Defined in :numref:`sec_oo-design`"""
-    def __init__(self, xlabel=None, ylabel=None, xlim=None,
-                 ylim=None, xscale='linear', yscale='linear',
-                 ls=['-', '--', '-.', ':'], colors=['C0', 'C1', 'C2', 'C3'],
-                 fig=None, axes=None, figsize=(3.5, 2.5), display=True):
+
+    def __init__(
+        self,
+        xlabel=None,
+        ylabel=None,
+        xlim=None,
+        ylim=None,
+        xscale="linear",
+        yscale="linear",
+        ls=["-", "--", "-.", ":"],
+        colors=["C0", "C1", "C2", "C3"],
+        fig=None,
+        axes=None,
+        figsize=(3.5, 2.5),
+        display=True,
+    ):
         self.save_hyperparameters()
 
     def draw(self, x, y, label, every_n=1):
         """Defined in :numref:`sec_utils`"""
-        Point = collections.namedtuple('Point', ['x', 'y'])
-        if not hasattr(self, 'raw_points'):
+        Point = collections.namedtuple("Point", ["x", "y"])
+        if not hasattr(self, "raw_points"):
             self.raw_points = collections.OrderedDict()
             self.data = collections.OrderedDict()
         if label not in self.raw_points:
@@ -145,23 +161,28 @@ class ProgressBoard(d2l.HyperParameters):
         if len(points) != every_n:
             return
         mean = lambda x: sum(x) / len(x)
-        line.append(Point(mean([p.x for p in points]),
-                          mean([p.y for p in points])))
+        line.append(Point(mean([p.x for p in points]), mean([p.y for p in points])))
         points.clear()
         if not self.display:
             return
-        d2l.use_svg_display()
+        use_svg_display()
         if self.fig is None:
-            self.fig = d2l.plt.figure(figsize=self.figsize)
+            self.fig = plt.figure(figsize=self.figsize)
         plt_lines, labels = [], []
         for (k, v), ls, color in zip(self.data.items(), self.ls, self.colors):
-            plt_lines.append(d2l.plt.plot([p.x for p in v], [p.y for p in v],
-                                          linestyle=ls, color=color)[0])
+            plt_lines.append(
+                plt.plot([p.x for p in v], [p.y for p in v], linestyle=ls, color=color)[
+                    0
+                ]
+            )
             labels.append(k)
-        axes = self.axes if self.axes else d2l.plt.gca()
-        if self.xlim: axes.set_xlim(self.xlim)
-        if self.ylim: axes.set_ylim(self.ylim)
-        if not self.xlabel: self.xlabel = self.x
+        axes = self.axes if self.axes else plt.gca()
+        if self.xlim:
+            axes.set_xlim(self.xlim)
+        if self.ylim:
+            axes.set_ylim(self.ylim)
+        if not self.xlabel:
+            self.xlabel = self.x
         axes.set_xlabel(self.xlabel)
         axes.set_ylabel(self.ylabel)
         axes.set_xscale(self.xscale)
@@ -170,49 +191,48 @@ class ProgressBoard(d2l.HyperParameters):
         display.display(self.fig)
         display.clear_output(wait=True)
 
-class Module(d2l.HyperParameters):
+
+class Module(nn.Module):
     """Defined in :numref:`sec_oo-design`"""
-    def __init__(self, plot_train_per_epoch=2, plot_valid_per_epoch=1):
-        self.save_hyperparameters()
-        self.board = ProgressBoard()
-        self.training = None
+
+    plot_train_per_epoch: int = 2
+    plot_valid_per_epoch: int = 1
+    board: ProgressBoard = ProgressBoard()
+    training: bool = None
 
     def loss(self, y_hat, y):
         raise NotImplementedError
 
     def forward(self, X):
-        assert hasattr(self, 'net'), 'Neural network is defined'
+        assert hasattr(self, "net"), "Neural network is defined"
         return self.net(X)
 
     def __call__(self, X, *args, **kwargs):
         if kwargs and "training" in kwargs:
-            self.training = kwargs['training']
+            self.training = kwargs["training"]
         return self.forward(X, *args)
 
     def plot(self, key, value, train):
         """Plot a point in animation."""
-        assert hasattr(self, 'trainer'), 'Trainer is not inited'
-        self.board.xlabel = 'epoch'
+        assert hasattr(self, "trainer"), "Trainer is not inited"
+        self.board.xlabel = "epoch"
         if train:
-            x = self.trainer.train_batch_idx / \
-                self.trainer.num_train_batches
-            n = self.trainer.num_train_batches / \
-                self.plot_train_per_epoch
+            x = self.trainer.train_batch_idx / self.trainer.num_train_batches
+            n = self.trainer.num_train_batches / self.plot_train_per_epoch
         else:
             x = self.trainer.epoch + 1
-            n = self.trainer.num_val_batches / \
-                self.plot_valid_per_epoch
-        self.board.draw(x, value, (
-            'train_' if train else 'val_') + key, every_n=int(n))
+            n = self.trainer.num_val_batches / self.plot_valid_per_epoch
 
-    def training_step(self, batch):
-        loss, grads = jax.vmap(jax.value_and_grad(self.loss))(self(*batch[:-1]), batch[-1])
-        self.plot('loss', loss, train=True)
+        self.board.draw(x, value, ("train_" if train else "val_") + key, every_n=int(n))
+
+    def training_step(self, params, batch):
+        loss, grads = jax.value_and_grad(self.loss)(params, *batch[:-1], batch[-1])
+        self.plot("loss", loss, train=True)
         return loss, grads
 
-    def validation_step(self, batch):
-        l = self.loss(self(*batch[:-1]), batch[-1])
-        self.plot('loss', l, train=False)
+    def validation_step(self, params, batch):
+        loss = self.loss(params, *batch[:-1], batch[-1])
+        self.plot("loss", loss, train=False)
 
     def configure_optimizers(self):
         raise NotImplementedError
@@ -221,9 +241,14 @@ class Module(d2l.HyperParameters):
         """Defined in :numref:`sec_classification`"""
         return optax.sgd(learning_rate=self.lr)
 
-class DataModule(d2l.HyperParameters):
+
+# 3.3
+
+
+class DataModule(HyperParameters):
     """Defined in :numref:`sec_oo-design`"""
-    def __init__(self, root='../data'):
+
+    def __init__(self, root="../data"):
         self.save_hyperparameters()
 
     def get_dataloader(self, train):
@@ -239,32 +264,41 @@ class DataModule(d2l.HyperParameters):
         """Defined in :numref:`sec_synthetic-regression-data`"""
         tensors = tuple(a[indices] for a in tensors)
         shuffle_buffer = tensors[0].shape[0] if train else 1
-        return tfds.as_numpy(tf.data.Dataset.from_tensor_slices(tensors).shuffle(
-            buffer_size=shuffle_buffer).batch(self.batch_size))
-    
+        return tfds.as_numpy(
+            tf.data.Dataset.from_tensor_slices(tensors)
+            .shuffle(buffer_size=shuffle_buffer)
+            .batch(self.batch_size)
+        )
 
-class Trainer(d2l.HyperParameters):
+
+class Trainer(HyperParameters):
     """Defined in :numref:`sec_oo-design`"""
+
     def __init__(self, max_epochs, num_gpus=0, gradient_clip_val=0):
         self.save_hyperparameters()
-        assert num_gpus == 0, 'No GPU support yet'
+        assert num_gpus == 0, "No GPU support yet"
 
     def prepare_data(self, data):
         self.train_dataloader = data.train_dataloader()
         self.val_dataloader = data.val_dataloader()
         self.num_train_batches = len(self.train_dataloader)
-        self.num_val_batches = (len(self.val_dataloader)
-                                if self.val_dataloader is not None else 0)
+        self.num_val_batches = (
+            len(self.val_dataloader) if self.val_dataloader is not None else 0
+        )
 
     def prepare_model(self, model):
         model.trainer = self
         model.board.xlim = [0, self.max_epochs]
         self.model = model
 
-    def fit(self, model, data):
+    def fit(self, params, model, data):
         self.prepare_data(data)
         self.prepare_model(model)
         self.optim = model.configure_optimizers()
+        self.state = TrainState.create(
+            apply_fn=model.apply, params=params, tx=model.configure_optimizers()
+        )
+
         self.epoch = 0
         self.train_batch_idx = 0
         self.val_batch_idx = 0
@@ -275,22 +309,31 @@ class Trainer(d2l.HyperParameters):
         """Defined in :numref:`sec_linear_scratch`"""
         return batch
 
-    # def fit_epoch(self):
-    #     self.model.training = True
-    #     for batch in self.train_dataloader:
-    #         _, grads = self.model.training_step(self.prepare_batch(batch))
-    #         if self.gradient_clip_val > 0:
-    #             grads = self.clip_gradients(self.gradient_clip_val, grads)
-    #         self.optim.apply_gradients(grads)
-    #         self.train_batch_idx += 1
-    #     if self.val_dataloader is None:
-    #         return
-    #     self.model.training = False
-    #     for batch in self.val_dataloader:
-    #         self.model.validation_step(self.prepare_batch(batch))
-    #         self.val_batch_idx += 1
+    def fit_epoch(self):
+        """Defined in :numref:`sec_linear_scratch`"""
+        self.model.training = True
 
-    # todo
+        for batch in self.train_dataloader:
+            _, grads = self.model.training_step(
+                self.state.params, self.prepare_batch(batch)
+            )
+
+            # todo: clip
+            # if self.gradient_clip_val > 0:
+            #     grads = self.clip_gradients(self.gradient_clip_val, grads)
+
+            self.state = self.state.apply_gradients(grads=grads)
+            self.train_batch_idx += 1
+
+        if self.val_dataloader is None:
+            return
+
+        self.model.training = False
+        for batch in self.val_dataloader:
+            self.model.validation_step(self.state.params, self.prepare_batch(batch))
+            self.val_batch_idx += 1
+
+    # todo: clip
     # def clip_gradients(self, grad_clip_val, grads):
     #     """Defined in :numref:`sec_rnn-scratch`"""
     #     grad_clip_val = tf.constant(grad_clip_val, dtype=tf.float32)
@@ -303,11 +346,12 @@ class Trainer(d2l.HyperParameters):
     #         return new_grads
     #     return grads
 
-# 3.3
 
-class SyntheticRegressionData(d2l.DataModule):  #@save
-    def __init__(self, key, w, b, noise=0.01, num_train=1000, num_val=1000,
-                 batch_size=32):
+# Use TensorFlow's dataloader, since JAX doesn't have one
+class SyntheticRegressionData(DataModule, HyperParameters):  # @save
+    def __init__(
+        self, key, w, b, noise=0.01, num_train=1000, num_val=1000, batch_size=32
+    ):
         super().__init__()
         self.save_hyperparameters()
         n = num_train + num_val
@@ -316,18 +360,10 @@ class SyntheticRegressionData(d2l.DataModule):  #@save
         noise = jax.random.normal(key2, (n, 1)) * noise
         self.y = jnp.matmul(self.X, w.reshape((-1, 1))) + b + noise
 
-# Use TensorFlow's dataloader, since JAX doesn't have one
-@d2l.add_to_class(d2l.DataModule)  #@save
-def get_tensorloader(self, tensors, train, indices=slice(0, None)):
-    tensors = tuple(a[indices] for a in tensors)
-    shuffle_buffer = tensors[0].shape[0] if train else 1
-    return tfds.as_numpy(tf.data.Dataset.from_tensor_slices(tensors).shuffle(
-        buffer_size=shuffle_buffer).batch(self.batch_size))
+    def get_dataloader(self, train):
+        i = slice(0, self.num_train) if train else slice(self.num_train, None)
+        return self.get_tensorloader((self.X, self.y), train, i)
 
-@d2l.add_to_class(SyntheticRegressionData)  #@save
-def get_dataloader(self, train):
-    i = slice(0, self.num_train) if train else slice(self.num_train, None)
-    return self.get_tensorloader((self.X, self.y), train, i)
 
 # Since JAX doesn't have a dataloader, we'll use PyTorch's
 # def load_array(data_arrays, batch_size, is_train=True):  # @save
@@ -338,6 +374,8 @@ def get_dataloader(self, train):
 #     dataset = data.TensorDataset(*data_arrays)
 #     return data.DataLoader(dataset, batch_size, shuffle=is_train)
 
+
+###############################################################################
 
 # 3.5
 
