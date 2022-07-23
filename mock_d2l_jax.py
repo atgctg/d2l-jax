@@ -100,8 +100,7 @@ def plot(
     set_axes(axes, xlabel, ylabel, xlim, ylim, xscale, yscale, legend)
 
 
-# 3.2
-
+# 3.2 (make sure these are in sync with oo-design.ipynb)
 
 def add_to_class(Class):  # @save
     def wrapper(obj):
