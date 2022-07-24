@@ -19,4 +19,4 @@
 - [ ] 17. Recommender Systems
 - [ ] 18. Generative Adversarial Networks
 - [ ] 19. Appendix: Mathematics for Deep Learning
-- [ ] 20. Appendix: Tools for Deep Learning
+- [x] 20. Appendix: Tools for Deep Learning
