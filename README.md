@@ -3,6 +3,8 @@
 - [x] 1. Introduction
 - [x] 2. Preliminaries
 - [ ] 3. Linear Neural Networks for Regression
+  - [ ] scratch
+  - [ ] weight
 - [ ] 4. Linear Neural Networks for Classification
 - [ ] 5. Multilayer Perceptrons
 - [ ] 6. Builders’ Guide
