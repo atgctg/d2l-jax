@@ -454,3 +454,37 @@ def show_images(imgs, num_rows, num_cols, titles=None, scale=1.5):
         if titles:
             ax.set_title(titles[i])
     return axes
+# 6.7
+
+def cpu():  #@save
+    return jax.devices('cpu')[0]
+
+def gpu(i=0):  #@save
+    return jax.devices('gpu')[i]
+
+def num_gpus():  #@save
+    try:
+        return jax.device_count('gpu')
+    except:
+        return 0
+
+def try_gpu(i=0):  #@save
+    """Return gpu(i) if exists, otherwise return cpu()."""
+    if num_gpus() >= i + 1:
+        return gpu(i)
+    return cpu()
+
+def try_all_gpus():  #@save
+    """Return all available GPUs, or [cpu(),] if no GPU exists."""
+    return [gpu(i) for i in range(num_gpus())]
+
+@d2l.add_to_class(d2l.Trainer)  #@save
+def __init__(self, max_epochs, num_gpus=0, gradient_clip_val=0):
+    self.save_hyperparameters()
+    self.gpus = [d2l.gpu(i) for i in range(min(num_gpus, d2l.num_gpus()))]
+
+@d2l.add_to_class(d2l.Trainer)  #@save
+def prepare_batch(self, batch):
+    if self.gpus:
+        batch = [jax.device_put(a, device=self.gpus[0]) for a in batch]
+    return batch
