@@ -33,19 +33,16 @@ def set_figsize(figsize=(3.5, 2.5)):
 
     Defined in :numref:`sec_calculus`"""
     use_svg_display()
-    plt.rcParams["figure.figsize"] = figsize
+    d2l.plt.rcParams["figure.figsize"] = figsize
 
 
 def set_axes(axes, xlabel, ylabel, xlim, ylim, xscale, yscale, legend):
     """Set the axes for matplotlib.
 
     Defined in :numref:`sec_calculus`"""
-    axes.set_xlabel(xlabel)
-    axes.set_ylabel(ylabel)
-    axes.set_xscale(xscale)
-    axes.set_yscale(yscale)
-    axes.set_xlim(xlim)
-    axes.set_ylim(ylim)
+    axes.set_xlabel(xlabel), axes.set_ylabel(ylabel)
+    axes.set_xscale(xscale), axes.set_yscale(yscale)
+    axes.set_xlim(xlim), axes.set_ylim(ylim)
     if legend:
         axes.legend(legend)
     axes.grid()
@@ -56,7 +53,7 @@ def plot(
     Y=None,
     xlabel=None,
     ylabel=None,
-    legend=None,
+    legend=[],
     xlim=None,
     ylim=None,
     xscale="linear",
@@ -68,14 +65,8 @@ def plot(
     """Plot data points.
 
     Defined in :numref:`sec_calculus`"""
-    if legend is None:
-        legend = []
 
-    set_figsize(figsize)
-    axes = axes if axes else plt.gca()
-
-    # Return True if `X` (tensor or list) has 1 axis
-    def has_one_axis(X):
+    def has_one_axis(X):  # True if `X` (tensor or list) has 1 axis
         return (
             hasattr(X, "ndim")
             and X.ndim == 1
@@ -91,16 +82,18 @@ def plot(
         Y = [Y]
     if len(X) != len(Y):
         X = X * len(Y)
+
+    set_figsize(figsize)
+    if axes is None:
+        axes = d2l.plt.gca()
     axes.cla()
     for x, y, fmt in zip(X, Y, fmts):
-        if len(x):
-            axes.plot(x, y, fmt)
-        else:
-            axes.plot(y, fmt)
+        axes.plot(x, y, fmt) if len(x) else axes.plot(y, fmt)
     set_axes(axes, xlabel, ylabel, xlim, ylim, xscale, yscale, legend)
 
 
 # 3.2 (make sure these are in sync with oo-design.ipynb)
+
 
 def add_to_class(Class):  # @save
     def wrapper(obj):
@@ -123,7 +116,7 @@ class HyperParameters:  # @save
             setattr(self, k, v)
 
 
-class ProgressBoard(HyperParameters):
+class ProgressBoard(d2l.HyperParameters):
     """Plot data points in animation.
 
     Defined in :numref:`sec_oo-design`"""
@@ -146,6 +139,9 @@ class ProgressBoard(HyperParameters):
         self.save_hyperparameters()
 
     def draw(self, x, y, label, every_n=1):
+        raise NotImplemented
+
+    def draw(self, x, y, label, every_n=1):
         """Defined in :numref:`sec_utils`"""
         Point = collections.namedtuple("Point", ["x", "y"])
         if not hasattr(self, "raw_points"):
@@ -164,18 +160,18 @@ class ProgressBoard(HyperParameters):
         points.clear()
         if not self.display:
             return
-        use_svg_display()
+        d2l.use_svg_display()
         if self.fig is None:
-            self.fig = plt.figure(figsize=self.figsize)
+            self.fig = d2l.plt.figure(figsize=self.figsize)
         plt_lines, labels = [], []
         for (k, v), ls, color in zip(self.data.items(), self.ls, self.colors):
             plt_lines.append(
-                plt.plot([p.x for p in v], [p.y for p in v], linestyle=ls, color=color)[
-                    0
-                ]
+                d2l.plt.plot(
+                    [p.x for p in v], [p.y for p in v], linestyle=ls, color=color
+                )[0]
             )
             labels.append(k)
-        axes = self.axes if self.axes else plt.gca()
+        axes = self.axes if self.axes else d2l.plt.gca()
         if self.xlim:
             axes.set_xlim(self.xlim)
         if self.ylim:
@@ -193,6 +189,7 @@ class ProgressBoard(HyperParameters):
 
 class Module(nn.Module):
     """Defined in :numref:`sec_oo-design`"""
+
     plot_train_per_epoch: int = 2
     plot_valid_per_epoch: int = 1
     board: ProgressBoard = ProgressBoard()
@@ -364,64 +361,67 @@ class SyntheticRegressionData(DataModule, HyperParameters):  # @save
 #     return data.DataLoader(dataset, batch_size, shuffle=is_train)
 
 
-###############################################################################
+# 3.4
+
+
+class LinearRegressionScratch(d2l.Module):  # @save
+    lr: float = 0.01
+    num_inputs: int = 2
+    sigma: float = 0.01
+
+    def setup(self) -> None:
+        self.w = self.param(
+            "w", nn.initializers.normal(self.sigma), (self.num_inputs, 1)
+        )
+        self.b = self.param("b", nn.initializers.zeros, (1,))
+
+    def __call__(self, X):
+        return jnp.matmul(X, self.w) + self.b
+
+    def loss(self, params, x, y):
+        y_hat = self.apply(params, x)
+        l = (y - y_hat.reshape(y.shape)) ** 2 / 2
+        return l.mean()
+
+    def configure_optimizers(self):
+        return sgd(self.lr)
+
+
+def sgd(lr: float):  # @save
+    def init(params):
+        del params
+        return optax.EmptyState
+
+    def update(grads, state, params):
+        del params
+        grads = jax.tree_map(lambda g: -lr * g, grads)
+        return grads, state
+
+    return optax.GradientTransformation(init, update)
+
 
 # 3.5
 
-# def get_fashion_mnist_labels(labels):  # @save
-#     """Return text labels for the Fashion-MNIST dataset."""
-#     text_labels = [
-#         "t-shirt",
-#         "trouser",
-#         "pullover",
-#         "dress",
-#         "coat",
-#         "sandal",
-#         "shirt",
-#         "sneaker",
-#         "bag",
-#         "ankle boot",
-#     ]
-#     return [text_labels[int(i)] for i in labels]
 
+class LinearRegression(d2l.Module):  # @save
+    lr: float = 0.01  # need to define because the parent is a dataclass
 
-# def show_images(imgs, num_rows, num_cols, titles=None, scale=1.5):  # @save
-#     """Plot a list of images."""
-#     figsize = (num_cols * scale, num_rows * scale)
-#     _, axes = plt.subplots(num_rows, num_cols, figsize=figsize)
-#     axes = axes.flatten()
-#     for i, (ax, img) in enumerate(zip(axes, imgs)):
-#         ax.imshow(img)
-#         ax.axes.get_xaxis().set_visible(False)
-#         ax.axes.get_yaxis().set_visible(False)
-#         if titles:
-#             ax.set_title(titles[i])
-#     return axes
+    def setup(self):
+        self.net = nn.Dense(1, kernel_init=nn.initializers.normal(0.01))
 
+    def __call__(self, X):
+        return self.net(X)
 
-# def load_data_fashion_mnist(batch_size, resize=None):  # @save
-#     """Download the Fashion-MNIST dataset and then load it into memory."""
-#     mnist_train, mnist_test = tf.keras.datasets.fashion_mnist.load_data()
-#     # Divide all numbers by 255 so that all pixel values are between
-#     # 0 and 1, add a batch dimension at the last. And cast label to int32
-#     process = lambda X, y: (tf.expand_dims(X, axis=3) / 255, tf.cast(y, dtype="int32"))
-#     resize_fn = lambda X, y: (
-#         tf.image.resize_with_pad(X, resize, resize) if resize else X,
-#         y,
-#     )
-#     return (
-#         tfds.as_numpy(
-#             tf.data.Dataset.from_tensor_slices(process(*mnist_train))
-#             .batch(batch_size)
-#             .shuffle(len(mnist_train[0]))
-#             .map(resize_fn)
-#         ),
-#         tfds.as_numpy(
-#             tf.data.Dataset.from_tensor_slices(process(*mnist_test))
-#             .batch(batch_size)
-#             .map(resize_fn)
-#         ),
-#     )
+    def loss(self, params, x, y):
+        # output needs to be be a scalar (todo: maybe there's a better way to do this)
+        return jnp.mean(optax.l2_loss(self.apply(params, x), y)).squeeze()
+
+    def configure_optimizers(self):
+        return optax.sgd(self.lr)
+
+    def get_w_b(self, state):
+        net = state.params["params"]["net"]
+        return net["kernel"], net["bias"]
 
 
 # 4.2
@@ -446,34 +446,41 @@ def show_images(imgs, num_rows, num_cols, titles=None, scale=1.5):
     return axes
 # 6.7
 
-def cpu():  #@save
-    return jax.devices('cpu')[0]
 
-def gpu(i=0):  #@save
-    return jax.devices('gpu')[i]
+def cpu():  # @save
+    return jax.devices("cpu")[0]
 
-def num_gpus():  #@save
+
+def gpu(i=0):  # @save
+    return jax.devices("gpu")[i]
+
+
+def num_gpus():  # @save
     try:
-        return jax.device_count('gpu')
+        return jax.device_count("gpu")
     except:
         return 0
 
-def try_gpu(i=0):  #@save
+
+def try_gpu(i=0):  # @save
     """Return gpu(i) if exists, otherwise return cpu()."""
     if num_gpus() >= i + 1:
         return gpu(i)
     return cpu()
 
-def try_all_gpus():  #@save
+
+def try_all_gpus():  # @save
     """Return all available GPUs, or [cpu(),] if no GPU exists."""
     return [gpu(i) for i in range(num_gpus())]
 
-@d2l.add_to_class(d2l.Trainer)  #@save
+
+@d2l.add_to_class(d2l.Trainer)  # @save
 def __init__(self, max_epochs, num_gpus=0, gradient_clip_val=0):
     self.save_hyperparameters()
     self.gpus = [d2l.gpu(i) for i in range(min(num_gpus, d2l.num_gpus()))]
 
-@d2l.add_to_class(d2l.Trainer)  #@save
+
+@d2l.add_to_class(d2l.Trainer)  # @save
 def prepare_batch(self, batch):
     if self.gpus:
         batch = [jax.device_put(a, device=self.gpus[0]) for a in batch]
