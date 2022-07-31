@@ -3,11 +3,11 @@
 - [x] 1. Introduction
 - [x] 2. Preliminaries
 - [ ] 3. Linear Neural Networks for Regression
-  - [ ] scratch
+  - [x] scratch
   - [ ] weight
 - [ ] 4. Linear Neural Networks for Classification
 - [ ] 5. Multilayer Perceptrons
-- [ ] 6. Builders’ Guide
+- [x] 6. Builders’ Guide
 - [ ] 7. Convolutional Neural Networks
 - [ ] 8. Modern Convolutional Neural Networks
 - [ ] 9. Recurrent Neural Networks

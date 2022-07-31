@@ -193,23 +193,15 @@ class ProgressBoard(HyperParameters):
 
 class Module(nn.Module):
     """Defined in :numref:`sec_oo-design`"""
-
     plot_train_per_epoch: int = 2
     plot_valid_per_epoch: int = 1
     board: ProgressBoard = ProgressBoard()
-    training: bool = None
 
     def loss(self, y_hat, y):
         raise NotImplementedError
 
-    def forward(self, X):
-        assert hasattr(self, "net"), "Neural network is defined"
-        return self.net(X)
-
     def __call__(self, X, *args, **kwargs):
-        if kwargs and "training" in kwargs:
-            self.training = kwargs["training"]
-        return self.forward(X, *args)
+        raise NotImplementedError
 
     def plot(self, key, value, train):
         """Plot a point in animation."""
@@ -295,7 +287,7 @@ class Trainer(HyperParameters):
         self.prepare_model(model)
         self.optim = model.configure_optimizers()
         self.state = TrainState.create(
-            apply_fn=model.apply, params=params, tx=model.configure_optimizers()
+            apply_fn=model.apply, params=params, tx=self.optim
         )
 
         self.epoch = 0
@@ -310,7 +302,6 @@ class Trainer(HyperParameters):
 
     def fit_epoch(self):
         """Defined in :numref:`sec_linear_scratch`"""
-        self.model.training = True
 
         for batch in self.train_dataloader:
             _, grads = self.model.training_step(
@@ -327,7 +318,6 @@ class Trainer(HyperParameters):
         if self.val_dataloader is None:
             return
 
-        self.model.training = False
         for batch in self.val_dataloader:
             self.model.validation_step(self.state.params, self.prepare_batch(batch))
             self.val_batch_idx += 1
