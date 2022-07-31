@@ -426,6 +426,51 @@ class LinearRegression(d2l.Module):  # @save
 
 # 4.2
 
+
+class FashionMNIST(d2l.DataModule):  # @save
+    def __init__(self, batch_size=64, resize=(28, 28)):
+        super().__init__()
+        self.save_hyperparameters()
+        self.train, self.val = tf.keras.datasets.fashion_mnist.load_data()
+
+    def text_labels(self, indices):
+        """Return text labels."""
+        labels = [
+            "t-shirt",
+            "trouser",
+            "pullover",
+            "dress",
+            "coat",
+            "sandal",
+            "shirt",
+            "sneaker",
+            "bag",
+            "ankle boot",
+        ]
+        return [labels[int(i)] for i in indices]
+
+    def get_dataloader(self, train):
+        data = self.train if train else self.val
+        process = lambda X, y: (
+            tf.expand_dims(X, axis=3) / 255,
+            tf.cast(y, dtype="int32"),
+        )
+        resize_fn = lambda X, y: (tf.image.resize_with_pad(X, *self.resize), y)
+        shuffle_buf = len(data[0]) if train else 1
+        return tfds.as_numpy(
+            tf.data.Dataset.from_tensor_slices(process(*data))
+            .batch(self.batch_size)
+            .map(resize_fn)
+            .shuffle(shuffle_buf)
+        )
+
+    def visualize(self, batch, nrows=1, ncols=8, labels=[]):
+        X, y = batch
+        if not labels:
+            labels = self.text_labels(y)
+        d2l.show_images(X, nrows, ncols, titles=labels)
+
+
 def show_images(imgs, num_rows, num_cols, titles=None, scale=1.5):
     """Plot a list of images.
 
@@ -444,6 +489,41 @@ def show_images(imgs, num_rows, num_cols, titles=None, scale=1.5):
         if titles:
             ax.set_title(titles[i])
     return axes
+
+
+# 4.3
+
+
+class Classifier(d2l.Module):
+    """Defined in :numref:`sec_classification`"""
+
+    def validation_step(self, batch):
+        Y_hat = self(*batch[:-1])
+        self.plot("loss", self.loss(Y_hat, batch[-1]), train=False)
+        self.plot("acc", self.accuracy(Y_hat, batch[-1]), train=False)
+
+    def accuracy(self, Y_hat, Y, averaged=True):
+        """Compute the number of correct predictions."""
+        Y_hat = Y_hat.reshape((-1, Y_hat.shape[-1]))
+        preds = Y_hat.argmax(axis=1).astype(Y.dtype)
+        compare = (preds == Y.reshape(-1)).astype(jnp.float32)
+        return compare.mean() if averaged else compare
+
+    # def loss(self, Y_hat, Y, averaged=True):
+    #     """Defined in :numref:`sec_softmax_concise`"""
+    #     Y_hat = d2l.reshape(Y_hat, (-1, Y_hat.shape[-1]))
+    #     Y = d2l.reshape(Y, (-1,))
+    #     fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+    #     return fn(Y, Y_hat)
+
+    # def layer_summary(self, X_shape):
+    #     """Defined in :numref:`sec_lenet`"""
+    #     X = d2l.normal(X_shape)
+    #     for layer in self.net.layers:
+    #         X = layer(X)
+    #         print(layer.__class__.__name__, 'output shape:\t', X.shape)
+
+
 # 6.7
 
 
