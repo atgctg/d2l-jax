@@ -20,3 +20,7 @@
 - [ ] 18. Generative Adversarial Networks
 - [ ] 19. Appendix: Mathematics for Deep Learning
 - [x] 20. Appendix: Tools for Deep Learning
+
+# Todos
+
+- [ ] vmap, jit
