@@ -3,6 +3,7 @@ import collections
 import inspect
 import time
 from IPython import display
+from dataclasses import field
 
 from matplotlib_inline import backend_inline
 import matplotlib.pyplot as plt
@@ -190,9 +191,10 @@ class ProgressBoard(d2l.HyperParameters):
 class Module(nn.Module):
     """Defined in :numref:`sec_oo-design`"""
 
-    plot_train_per_epoch: int = 2
-    plot_valid_per_epoch: int = 1
-    board: ProgressBoard = ProgressBoard()
+    # field attributes with defaults allow us to use non-default arguments in child classes
+    plot_train_per_epoch: int = field(default=2, init=False)
+    plot_valid_per_epoch: int = field(default=1, init=False)
+    board: ProgressBoard = field(default=ProgressBoard(), init=False)
 
     def loss(self, y_hat, y):
         raise NotImplementedError
