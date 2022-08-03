@@ -1,5 +1,7 @@
 # d2l-jax
 
+JAX/FLAX implementation for [Dive into Deep Learning](http://d2l.ai/).
+
 - [x] 1. Introduction
 - [x] 2. Preliminaries
 - [x] 3. Linear Neural Networks for Regression
@@ -23,4 +25,4 @@
 
 # Todos
 
-- [ ] vmap, jit
+- [ ] apply vmap & jit
