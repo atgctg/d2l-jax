@@ -519,12 +519,12 @@ class Classifier(d2l.Module):  #@save
         compare = (preds == Y.reshape(-1)).astype(jnp.float32)
         return compare.mean() if averaged else compare
 
-    # def loss(self, Y_hat, Y, averaged=True):
-    #     """Defined in :numref:`sec_softmax_concise`"""
-    #     Y_hat = d2l.reshape(Y_hat, (-1, Y_hat.shape[-1]))
-    #     Y = d2l.reshape(Y, (-1,))
-    #     fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-    #     return fn(Y, Y_hat)
+    def loss(self, params, X, Y, averaged=True):
+        Y_hat = self.apply(params, X)
+        Y_hat = Y_hat.reshape((-1, Y_hat.shape[-1]))
+        Y = Y.reshape((-1,))
+        ce = optax.softmax_cross_entropy_with_integer_labels(Y_hat, Y)
+        return ce.mean() if averaged else ce
 
     # def layer_summary(self, X_shape):
     #     """Defined in :numref:`sec_lenet`"""

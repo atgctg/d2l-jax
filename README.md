@@ -1,6 +1,6 @@
 # d2l-jax
 
-JAX/FLAX implementation for [Dive into Deep Learning](http://d2l.ai/).
+JAX/Flax implementation for [Dive into Deep Learning](http://d2l.ai/).
 
 - [x] 1. Introduction
 - [x] 2. Preliminaries
