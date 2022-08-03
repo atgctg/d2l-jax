@@ -192,6 +192,8 @@ class Module(nn.Module):
     """Defined in :numref:`sec_oo-design`"""
 
     # field attributes with defaults allow us to use non-default arguments in child classes
+    # see: https://stackoverflow.com/questions/51575931
+    # (might be better to use Python 3.10's kw_only attribute)
     plot_train_per_epoch: int = field(default=2, init=False)
     plot_valid_per_epoch: int = field(default=1, init=False)
     board: ProgressBoard = field(default=ProgressBoard(), init=False)
@@ -280,13 +282,19 @@ class Trainer(HyperParameters):
         model.trainer = self
         model.board.xlim = [0, self.max_epochs]
         self.model = model
+    
+    def prepare_params(self, key):
+        input_shape = next(iter(self.train_dataloader))[0].shape
+        dummy_input = jnp.empty(input_shape)
+        params = self.model.init(key, dummy_input)
+        return params
 
-    def fit(self, params, model, data):
+    def fit(self, model, data, key=random.PRNGKey(42)):
         self.prepare_data(data)
         self.prepare_model(model)
-        self.optim = model.configure_optimizers()
+        self.optim = model.configure_optimizers()        
         self.state = TrainState.create(
-            apply_fn=model.apply, params=params, tx=self.optim
+            apply_fn=model.apply, params=self.prepare_params(key), tx=self.optim
         )
 
         self.epoch = 0
