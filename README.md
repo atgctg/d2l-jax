@@ -3,9 +3,7 @@
 - [x] 1. Introduction
 - [x] 2. Preliminaries
 - [x] 3. Linear Neural Networks for Regression
-- [ ] 4. Linear Neural Networks for Classification
-  - [ ] 4.4
-  - [ ] 4.5
+- [x] 4. Linear Neural Networks for Classification
 - [ ] 5. Multilayer Perceptrons
 - [x] 6. Builders’ Guide
 - [ ] 7. Convolutional Neural Networks
