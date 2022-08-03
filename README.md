@@ -7,6 +7,9 @@ JAX/Flax implementation for [Dive into Deep Learning](http://d2l.ai/).
 - [x] 3. Linear Neural Networks for Regression
 - [x] 4. Linear Neural Networks for Classification
 - [ ] 5. Multilayer Perceptrons
+  - [x] 4
+  - [ ] 6
+  - [ ] 7
 - [x] 6. Builders’ Guide
 - [ ] 7. Convolutional Neural Networks
 - [ ] 8. Modern Convolutional Neural Networks
