@@ -190,10 +190,10 @@ class ProgressBoard(d2l.HyperParameters):
 
 class Module(nn.Module):
     """Defined in :numref:`sec_oo-design`"""
-
     # field attributes with defaults allow us to use non-default arguments in child classes
     # see: https://stackoverflow.com/questions/51575931
     # (might be better to use Python 3.10's kw_only attribute)
+    training: bool = field(default=None, init=False)
     plot_train_per_epoch: int = field(default=2, init=False)
     plot_valid_per_epoch: int = field(default=1, init=False)
     board: ProgressBoard = field(default=ProgressBoard(), init=False)
@@ -310,6 +310,7 @@ class Trainer(HyperParameters):
     def fit_epoch(self):
         """Defined in :numref:`sec_linear_scratch`"""
 
+        self.model.training = True
         for batch in self.train_dataloader:
             _, grads = self.model.training_step(
                 self.state.params, self.prepare_batch(batch)
@@ -325,6 +326,7 @@ class Trainer(HyperParameters):
         if self.val_dataloader is None:
             return
 
+        self.model.training = False
         for batch in self.val_dataloader:
             self.model.validation_step(self.state.params, self.prepare_batch(batch))
             self.val_batch_idx += 1
