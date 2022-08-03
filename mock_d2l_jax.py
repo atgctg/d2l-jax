@@ -504,16 +504,16 @@ def show_images(imgs, num_rows, num_cols, titles=None, scale=1.5):
 # 4.3
 
 
-class Classifier(d2l.Module):
-    """Defined in :numref:`sec_classification`"""
+class Classifier(d2l.Module):  #@save
+    def validation_step(self, params, batch):
+        loss = self.loss(params, *batch[:-1], batch[-1])
+        accuracy = self.accuracy(params, *batch[:-1], batch[-1])
+        self.plot('loss', loss, train=False)
+        self.plot('acc', accuracy, train=False)
 
-    def validation_step(self, batch):
-        Y_hat = self(*batch[:-1])
-        self.plot("loss", self.loss(Y_hat, batch[-1]), train=False)
-        self.plot("acc", self.accuracy(Y_hat, batch[-1]), train=False)
-
-    def accuracy(self, Y_hat, Y, averaged=True):
+    def accuracy(self, params, X, Y, averaged=True):
         """Compute the number of correct predictions."""
+        Y_hat = self.apply(params, X)
         Y_hat = Y_hat.reshape((-1, Y_hat.shape[-1]))
         preds = Y_hat.argmax(axis=1).astype(Y.dtype)
         compare = (preds == Y.reshape(-1)).astype(jnp.float32)
