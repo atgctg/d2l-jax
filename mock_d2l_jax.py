@@ -623,3 +623,14 @@ def prepare_batch(self, batch):
     if self.gpus:
         batch = [jax.device_put(a, device=self.gpus[0]) for a in batch]
     return batch
+
+# 7.2
+
+def corr2d(X, K):  #@save
+    """Compute 2D cross-correlation."""
+    h, w = K.shape
+    Y = jnp.zeros((X.shape[0] - h + 1, X.shape[1] - w + 1))
+    for i in range(Y.shape[0]):
+        for j in range(Y.shape[1]):
+            Y = Y.at[i, j].set((X[i:i + h, j:j + w] * K).sum())
+    return Y
