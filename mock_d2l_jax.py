@@ -1,6 +1,7 @@
 DATA_HUB = dict()
 DATA_URL = 'http://d2l-data.s3-accelerate.amazonaws.com/'
 
+from functools import partial
 import os
 import sys
 import collections
@@ -634,3 +635,8 @@ def corr2d(X, K):  #@save
         for j in range(Y.shape[1]):
             Y = Y.at[i, j].set((X[i:i + h, j:j + w] * K).sum())
     return Y
+
+# 7.6
+
+XaviarConv = partial(nn.Conv, kernel_init=nn.initializers.xavier_uniform()) # @save
+XaviarDense = partial(nn.Dense, kernel_init=nn.initializers.xavier_uniform()) # @save
