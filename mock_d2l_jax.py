@@ -286,9 +286,10 @@ class Trainer(HyperParameters):
             len(self.val_dataloader) if self.val_dataloader is not None else 0
         )
 
-    def prepare_model(self, model):
+    def prepare_model(self, model, **kwargs):
         model.trainer = self
         model.board.xlim = [0, self.max_epochs]
+        model.apply = partial(model.apply, **kwargs)
         self.model = model
     
     def prepare_params(self, key):
@@ -299,7 +300,7 @@ class Trainer(HyperParameters):
 
     def fit(self, model, data, key=random.PRNGKey(42)):
         self.prepare_data(data)
-        self.prepare_model(model)
+        self.prepare_model(model, rngs=key)
         self.optim = model.configure_optimizers()        
         self.state = TrainState.create(
             apply_fn=model.apply, params=self.prepare_params(key), tx=self.optim
@@ -537,13 +538,13 @@ class Classifier(d2l.Module):  #@save
         return ce.mean() if averaged else ce
 
 @d2l.add_to_class(d2l.Classifier)
-def layer_summary(self, X_shape, key=random.PRNGKey(42)):
+def layer_summary(self, X_shape, rngs=random.PRNGKey(42)):
     # TODO: implement this
     # for layer in self.net:
     #     X = layer(X)
     #     print(layer.__class__.__name__, 'output X_shape:\t', X.shape)
     # return X
-    self.tabulate(key, jnp.empty(X_shape))
+    self.tabulate(rngs, jnp.empty(X_shape))
 
 # 5.7
 
