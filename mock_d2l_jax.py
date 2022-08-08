@@ -210,7 +210,7 @@ class Module(nn.Module):
         raise NotImplementedError
 
     def __call__(self, X, *args, **kwargs):
-        raise NotImplementedError
+        return self.net(X, *args, **kwargs)
 
     def plot(self, key, value, train):
         """Plot a point in animation."""
@@ -536,12 +536,14 @@ class Classifier(d2l.Module):  #@save
         ce = optax.softmax_cross_entropy_with_integer_labels(Y_hat, Y)
         return ce.mean() if averaged else ce
 
-    # def layer_summary(self, X_shape):
-    #     """Defined in :numref:`sec_lenet`"""
-    #     X = d2l.normal(X_shape)
-    #     for layer in self.net.layers:
-    #         X = layer(X)
-    #         print(layer.__class__.__name__, 'output shape:\t', X.shape)
+@d2l.add_to_class(d2l.Classifier)
+def layer_summary(self, X_shape, key=random.PRNGKey(42)):
+    # TODO: implement this
+    # for layer in self.net:
+    #     X = layer(X)
+    #     print(layer.__class__.__name__, 'output X_shape:\t', X.shape)
+    # return X
+    self.tabulate(key, jnp.empty(X_shape))
 
 # 5.7
 
