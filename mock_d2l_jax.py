@@ -298,12 +298,12 @@ class Trainer(HyperParameters):
         params = self.model.init(key, dummy_input)
         return params
 
-    def fit(self, model, data, key=random.PRNGKey(42)):
+    def fit(self, model, data, rngs=random.PRNGKey(42)):
         self.prepare_data(data)
-        self.prepare_model(model, rngs=key)
+        self.prepare_model(model, rngs=rngs)
         self.optim = model.configure_optimizers()        
         self.state = TrainState.create(
-            apply_fn=model.apply, params=self.prepare_params(key), tx=self.optim
+            apply_fn=model.apply, params=self.prepare_params(rngs), tx=self.optim
         )
 
         self.epoch = 0
