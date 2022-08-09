@@ -643,3 +643,5 @@ def corr2d(X, K):  #@save
 
 XaviarConv = partial(nn.Conv, kernel_init=nn.initializers.xavier_uniform()) # @save
 XaviarDense = partial(nn.Dense, kernel_init=nn.initializers.xavier_uniform()) # @save
+
+flatten = lambda x: x.reshape((x.shape[0], -1))
