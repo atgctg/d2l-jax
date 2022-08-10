@@ -29,6 +29,8 @@ import tensorflow_datasets as tfds
 
 d2l = sys.modules[__name__]
 
+default_key = random.PRNGKey(42)
+
 
 def use_svg_display():
     """Use the svg format to display a plot in Jupyter.
@@ -292,16 +294,17 @@ class Trainer(HyperParameters):
         model.apply = partial(model.apply, **kwargs)
         self.model = model
     
-    def prepare_params(self, key):
+    def prepare_params(self, rngs):
         input_shape = next(iter(self.train_dataloader))[0].shape
         dummy_input = jnp.empty(input_shape)
-        params = self.model.init(key, dummy_input)
+        params = self.model.init(rngs, dummy_input)
         return params
 
-    def fit(self, model, data, rngs=random.PRNGKey(42)):
+    def fit(self, model, data, **kwargs):
         self.prepare_data(data)
-        self.prepare_model(model, rngs=rngs)
-        self.optim = model.configure_optimizers()        
+        self.prepare_model(model, **kwargs)
+        self.optim = model.configure_optimizers()
+        rngs = kwargs['rngs'] if 'rngs' in kwargs else default_key
         self.state = TrainState.create(
             apply_fn=model.apply, params=self.prepare_params(rngs), tx=self.optim
         )
@@ -525,6 +528,8 @@ class Classifier(d2l.Module):  #@save
     def accuracy(self, params, X, Y, averaged=True):
         """Compute the number of correct predictions."""
         Y_hat = self.apply(params, X)
+        if type(Y_hat) == tuple: # if mutable is set, apply returns a tuple of (Y_hat, new_state)
+            Y_hat = Y_hat[0] # TODO: we probably shouldn't throw away the new state
         Y_hat = Y_hat.reshape((-1, Y_hat.shape[-1]))
         preds = Y_hat.argmax(axis=1).astype(Y.dtype)
         compare = (preds == Y.reshape(-1)).astype(jnp.float32)
@@ -532,13 +537,15 @@ class Classifier(d2l.Module):  #@save
 
     def loss(self, params, X, Y, averaged=True):
         Y_hat = self.apply(params, X)
+        if type(Y_hat) == tuple: # if mutable is set, apply returns a tuple of (Y_hat, new_state)
+            Y_hat = Y_hat[0] # TODO: we probably shouldn't throw away the new state
         Y_hat = Y_hat.reshape((-1, Y_hat.shape[-1]))
         Y = Y.reshape((-1,))
         ce = optax.softmax_cross_entropy_with_integer_labels(Y_hat, Y)
         return ce.mean() if averaged else ce
 
 @d2l.add_to_class(d2l.Classifier)
-def layer_summary(self, X_shape, rngs=random.PRNGKey(42)):
+def layer_summary(self, X_shape, rngs=default_key):
     # TODO: implement this
     # for layer in self.net:
     #     X = layer(X)
