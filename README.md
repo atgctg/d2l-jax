@@ -26,3 +26,4 @@ JAX/Flax implementation for [Dive into Deep Learning](http://d2l.ai/).
 # Todos
 
 - [ ] apply vmap & jit
+- [ ] Set Dropout determinism based on on a variable
