@@ -9,8 +9,8 @@ JAX/Flax implementation for [Dive into Deep Learning](http://d2l.ai/).
 - [x] 5. Multilayer Perceptrons
 - [x] 6. Builders’ Guide
 - [x] 7. Convolutional Neural Networks
-- [ ] 8. Modern Convolutional Neural Networks
-- [ ] 9. Recurrent Neural Networks
+- [x] 8. Modern Convolutional Neural Networks (unfinished)
+- [ ] [WIP] 9. Recurrent Neural Networks
 - [ ] 10. Modern Recurrent Neural Networks
 - [ ] 11. Attention Mechanisms and Transformers
 - [ ] 12. Optimization Algorithms
